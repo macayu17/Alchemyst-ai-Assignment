@@ -12,18 +12,13 @@ sequence committed to the DOM for reconnect recovery.
 
 ## Run
 
-Install and build the supplied agent server:
+Start the supplied agent server from the original hiring repository:
 
 ```bash
-cd agent-server
+git clone https://github.com/Alchemyst-ai/hiring.git
+cd hiring/June-2026_FullStackAI/agent-server
 npm install
 npm run build
-```
-
-Start it in normal mode:
-
-```bash
-cd agent-server
 npm run start
 ```
 
@@ -43,7 +38,7 @@ No environment variables or additional configuration are required.
 For chaos mode:
 
 ```bash
-cd agent-server
+cd hiring/June-2026_FullStackAI/agent-server
 npm run start -- --mode chaos
 ```
 
@@ -109,10 +104,6 @@ The recording demonstrates:
 npm test
 npm run lint
 npm run typecheck
-npm run build
-
-cd agent-server
-npm install
 npm run build
 ```
 
