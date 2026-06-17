@@ -1,39 +1,124 @@
-# Alchemyst Hiring
+# Relay Agent Console
 
-Welcome! This repo is the index of hiring drives we've run at Alchemyst. Each folder below is a self-contained drive with role descriptions and take-home assignments.
+Relay is a Next.js App Router application for inspecting a streaming AI agent
+over WebSockets. A protocol layer validates messages, reorders and deduplicates
+events by sequence number, and projects them into separate chat, trace, and
+context views. React renders those projections while tracking the highest
+sequence committed to the DOM for reconnect recovery.
 
-**Baseline expectation across every drive:** exceptionally high agency, adaptability, and learnability.
+## Requirements
 
-## Drives
+- Node.js 20 or newer
 
-### [June 2026 — Full Stack AI](./June-2026_FullStackAI/)
-A systems-focused assignment for Full Stack AI Engineers. Build an **Agent Console** — a Next.js application that connects to a provided mock AI agent backend over WebSockets, renders streaming responses with mid-stream tool call interruptions, displays a live agent trace timeline, and survives the backend's chaos mode without crashing or losing state. Includes a Dockerised agent-server with a documented WebSocket protocol.
+## Run
 
-| Role | Also known as | Assignment |
-| --- | --- | --- |
-| Full Stack AI Engineer | — | [Agent Console Assignment](./June-2026_FullStackAI/README.md) |
+Install and build the supplied agent server:
 
-### [May 2026](./may-2026/)
-Open positions for our 2026 hiring cycle. See the [drive overview](./may-2026/README.md) for the full pitch.
+```bash
+cd agent-server
+npm install
+npm run build
+```
 
-| Role | Also known as | Assignment |
-| --- | --- | --- |
-| Cloud Cartographer | DevOps Intern / Infra Engineer | [DevOps Internship Assignment](./may-2026/devops/devops-internship-assignment.md) |
-| Realtime Whisperer | B2B Custom Agent Engineer | [Real-Time AI Chat over WebSockets](./may-2026/b2b-custom-agent-assignment.md) |
-| Agentic Architect | Fullstack AI Engineer | [Intelligent Resume Assistant (Agentic AI System)](./may-2026/fullstack-ai-assignment.md) |
+Start it in normal mode:
 
-### [June 2025](./june-2025/)
-See the [drive overview](./june-2025/README.md) for the full pitch.
+```bash
+cd agent-server
+npm run start
+```
 
-| Role | Also known as | Assignment |
-| --- | --- | --- |
-| Infra Puppeteer | DevOps / Infra Engineer | [Infra Assignment](./june-2025/infra-assignment.md) |
-| Platform Jedi | Platform / Product / Data Engineer | [Platform Assignment](./june-2025/platform-assignment.md) |
-| Agentic Maverick | Agentic / Applied AI Engineer | [Agent Assignment](./june-2025/agent-assignment.md) |
-| Solutions Wizard | Solutions / Forward Deployed Engineer | [Solutions Assignment](./june-2025/solutions-assignment.md) |
+In another terminal, install and start the application from the repository
+root:
 
-## How to apply
+```bash
+npm install
+npm run build
+npm run start
+```
 
-Each assignment page includes its own submission instructions — typically a GitHub repo link emailed to the listed contacts, or a meeting booking link. Build what you can in the time given, then show it to us directly.
+Open `http://localhost:3000`.
 
-> It's okay if you don't finish the entire assignment. We want to see the effort you put in. Skills are transferable; the go-getter attitude isn't.
+No environment variables or additional configuration are required.
+
+For chaos mode:
+
+```bash
+cd agent-server
+npm run start -- --mode chaos
+```
+
+## Connection State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Connecting
+    Connecting --> Connected: socket opens
+    Connecting --> Reconnecting: open fails
+    Connected --> Streaming: USER_MESSAGE sent
+    Streaming --> ToolCallPending: TOOL_CALL received
+    ToolCallPending --> Streaming: TOOL_RESULT processed
+    Streaming --> Connected: STREAM_END processed
+    Connected --> Reconnecting: socket closes
+    Streaming --> Reconnecting: socket closes
+    ToolCallPending --> Reconnecting: socket closes
+    Reconnecting --> Resuming: socket opens
+    Resuming --> Connected: RESUME sent first and replay drained
+    Reconnecting --> Reconnecting: exponential backoff
+    Connected --> Disconnected: manual close
+```
+
+The reconnect delays are `500ms`, `1s`, `2s`, `4s`, `8s`, then `10s`.
+
+## Screenshots
+
+### Streamed Response With Tool Call
+
+![Streamed response with tool call](public/agent-console-normal.png)
+
+### Agent Trace Timeline
+
+![Agent trace timeline](public/trace-timeline.png)
+
+### Context Inspector Diff
+
+![Context inspector showing a diff](public/context-diff.png)
+
+## Chaos Mode Recording
+
+[Download the chaos mode recording](public/chaos-mode-recording.mp4)
+
+The recording demonstrates:
+
+1. A connection drop followed by reconnect and `RESUME`.
+2. Out-of-order and duplicate event handling.
+3. Multiple tool calls rendered as separate cards.
+4. A context snapshot larger than 500KB.
+5. Empty heartbeat challenges answered without a crash.
+
+## Test Prompts
+
+- `Summarize the Q3 report`
+- `Analyze the correlation`
+- `Find the deployment SLA`
+- `Show the full database schema`
+- `Write a long detailed document`
+
+## Verification
+
+```bash
+npm test
+npm run lint
+npm run typecheck
+npm run build
+
+cd agent-server
+npm install
+npm run build
+```
+
+The backend exposes protocol logs at `http://localhost:4747/log`. During local
+verification, `TOOL_ACK`, `PONG`, and `RESUME` entries were accepted with an
+`ok` verdict.
+
+Implementation tradeoffs and scaling notes are documented in
+[DECISIONS.md](DECISIONS.md).
